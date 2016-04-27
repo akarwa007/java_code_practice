@@ -1,0 +1,383 @@
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.AbstractQueue;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
+
+
+
+
+public class Blob {
+
+	// List of unvisited cells which is initially empty
+	// Invariant : initially it is empty , and is again empty 
+	//  at the end of processing all blob cells
+	Queue<Cell> unVisitedCells = new LinkedList<Cell>();
+	
+	// the size of the blob 
+	int N = 0;
+	
+	// inner class to hold a blob cell
+	class  Cell {
+		int row,col,cellreads;
+		public Cell()
+		{
+		
+		}
+		public Cell(int i , int j)
+		{
+			row = i;
+			col = j;
+			cellreads = 0;
+		}
+		public void Assign(int i,int j,int reads)
+		{
+			row = i;
+			col = j;
+			cellreads = reads;
+		}
+	}
+	
+	// the blob represented as a 2-d array
+	public int[][] blob;
+	
+	// trackers for the top,left,right,bottom edges
+	int top, left , right , bottom;
+	
+	// These are used to exactly identify the individual edge cells in the naive algorithm
+	Cell topCell , leftCell, rightCell, bottomCell;
+	
+	// keeps track of total cells processed/read/visited
+	int cellreads;
+	
+	
+	public static void main(final String[] args)
+	 {
+		int sum = 0;
+		for(int i = 0; i < 5;i++)
+			for(int j =0; j < 3;j++)
+			{
+				System.out.println(i+j);
+				sum = sum + 1;
+			}
+		System.out.println(sum);
+		
+		String S = "()()";
+		long n = Node.count(S);
+		System.out.println(n);
+		if (1==1)
+		{
+		  return;
+		}
+		
+		if (args.length != 1)
+		{
+			System.out.println("Expecting one argument - filepath");
+			return;
+		}
+		
+		Blob b = new Blob();
+		b.init(args[0]);
+		
+		
+		System.out.println("Processing through Naive algorithm");
+		b.DetectTop();
+		b.DetectLeft();
+		b.DetectRight();
+		b.DetectBottom();
+		
+		System.out.println();
+		System.out.println("Results");
+		System.out.println();
+		
+		System.out.println("top is " + b.top );
+		System.out.println("left is " + b.left  );
+		System.out.println("right is " + b.right  );
+		System.out.println("bottom is " + b.bottom );
+		System.out.println("cellreads is " +  b.cellreads );
+		
+		b.init(args[0]);
+		System.out.println("Processing through Optimized algorithm");
+		b.BeginProcessing();
+		
+		System.out.println();
+		System.out.println("Results");
+		System.out.println();
+		
+		System.out.println("top is " + b.top );
+		System.out.println("left is " + b.left  );
+		System.out.println("right is " + b.right  );
+		System.out.println("bottom is " + b.bottom );
+		System.out.println("cellreads is " +  b.cellreads );
+		
+	 }
+	public void init(String filepath)
+	{
+      top = left = right = bottom = cellreads =  0;
+      
+      topCell = new Cell();
+      leftCell = new Cell();
+      rightCell = new Cell();
+      bottomCell = new Cell();
+      
+      FillBlob(filepath);
+      PrintBlob();
+  	
+	}
+
+    public void FillBlob(String filepath)
+    {
+    	BufferedReader br;
+    	String line;
+    	String[] arr;
+    	int[] arr_int;
+    	ArrayList<int[]> tempList = new ArrayList<int[]>();
+
+    	try {
+    		  br = new BufferedReader(new FileReader(filepath));
+    	       line = br.readLine();
+    	      
+    	    while ((line != null)&&(line != "")) {
+    	      
+    	       arr = line.split(",");
+    	       arr_int = new int[arr.length];
+    	       for (int i = 0; i < arr.length; i++)
+    	       {
+    	         arr_int[i] = Integer.parseInt(arr[i]);
+    	       }
+    	       tempList.add(arr_int);
+    	       line = br.readLine();
+    		 }
+    	    
+    	} catch (FileNotFoundException e) {
+
+    		e.printStackTrace();
+    	} catch (IOException e) {
+    		
+    		e.printStackTrace();
+    	} 
+    	finally {
+    	    //br.close();
+    	}
+    	
+    	blob = new int[tempList.size()][];
+    	N = tempList.size();
+    	for(int i =0; i < tempList.size(); i++)
+    	{
+    	 blob[i] = tempList.get(i);
+    	}
+    	
+    	
+
+    }
+    public void PrintBlob()
+    {
+    	System.out.println("------The Blob looks like this----------");
+    	for(int i = 0; i < blob.length; i++)
+    	{
+    		for(int j = 0; j < blob.length; j++)
+        	{
+        		System.out.print(blob[i][j] + ",");
+        	}
+    		System.out.println();
+    	}
+    	System.out.println("--------------End of Blob--------------");
+    }
+	public void BeginProcessing()
+	{
+		 boolean found = false;
+		 for(int row = 0; row < N; row++)
+	     {
+		    for(int col = 0; col <  N; col++)
+		    {
+		      if (blob[row][col] == 1)
+		      {
+		    	  ProcessNeighbours(new Cell(row,col));
+		    	  blob[row][col] = -1; // Allready visited so mark it as -1
+		    	  top = row;
+		    	  bottom = row;
+		    	  left = col;
+		    	  right = col;
+		    	  cellreads++;
+		    	  found = true;
+		      }
+		      if (found) break;
+		    }
+		    if (found) break;
+	     }
+		 // Now that there is atleast once cell in the queue, beginning processing the cells in 
+		 // queue and exploring the neighbours
+		 ProcessQueue();
+	}
+	public void ProcessQueue()
+	{
+		while(!this.unVisitedCells.isEmpty())
+		{
+			Cell c = this.unVisitedCells.remove();
+			
+			// Adjust top,bottom,left,right edge's with the new cell's discovery
+			top = top < c.row ? top : c.row ;
+			bottom = bottom > c.row ? bottom : c.row ;
+			left = left < c.col ? left : c.col;
+			right = right > c.col ? right : c.col;
+			
+			cellreads++;
+			ProcessNeighbours(c);
+			blob[c.row][c.col] = -1; // Mark the cell as visited
+		}
+		
+	}
+	public void ProcessNeighbours(Cell current)
+	{
+		
+			if(LeftNeighbour(current) != null)
+				this.unVisitedCells.add(LeftNeighbour(current));
+			if(RightNeighbour(current) != null)
+				this.unVisitedCells.add(RightNeighbour(current));
+			if(TopNeighbour(current) != null)
+				this.unVisitedCells.add(TopNeighbour(current));
+			if(BottomNeighbour(current) != null)
+				this.unVisitedCells.add(BottomNeighbour(current));
+		
+			
+	}
+	public Cell LeftNeighbour(Cell current)
+	{
+		if ((current.col > 0) && (blob[current.row][current.col-1] == 1)) 
+			return new Cell(current.row,current.col-1);
+		else
+			return null;
+	}
+	public Cell RightNeighbour(Cell current)
+	{
+		if ((current.col < N-1) && (blob[current.row][current.col+1] == 1)) 
+			return new Cell(current.row,current.col+1);
+		else
+			return null;
+	}
+	public Cell TopNeighbour(Cell current)
+	{
+		if ((current.row > 0) && (blob[current.row-1][current.col] == 1)) 
+			return new Cell(current.row-1,current.col);
+		else
+			return null;
+	}
+	public Cell BottomNeighbour(Cell current)
+	{
+		if ((current.row < N-1) && (blob[current.row+1][current.col] == 1)) 
+			return new Cell(current.row+1,current.col);
+		else
+			return null;
+	}
+	// This function is part of the naive algorithm 
+	// It detects the top edge by processing cells row by row 
+    // The first blob cell encountered is considered the  top edge
+	public void DetectTop()
+	{
+	  for(int i = 0; i < N; i++)
+	  {
+		  for(int j = 0; j < N; j++)
+		  {
+			  cellreads++;
+			  if (blob[i][j] == 1)
+			  {
+				  top = i;
+				  topCell.Assign(i, j,cellreads);
+			     return;	  
+			  }
+		  }
+	  }
+    }
+	// This function is part of the naive algorithm 
+	// It detects the Left edge by processing cells column by columnn 
+	// It begins from the top edge cell and then moving to the left until it 
+	// sees a full column with all zeroes
+	public void DetectLeft()
+	{
+	 left = topCell.col;
+	 leftCell.Assign(topCell.row, topCell.col, cellreads);
+	 boolean found = false;
+	 for(int col = topCell.col-1; col >= 0; col--)
+     {
+		 found = false;
+	    for(int row = topCell.row+1; row < N; row++)
+	    {
+	    	cellreads++;
+			  if (blob[row][col] == 1)
+			  {
+				  left = col;
+				  leftCell.Assign(row, col,cellreads);
+				  found = true;
+			     break;	  
+			  }
+	    }
+	    if (!found)
+	    	break;
+	  }
+	 leftCell.cellreads = cellreads;
+    }
+	// This function is part of the naive algorithm 
+    // It detects the Right edge by processing cells column by columnn 
+    // It begins from the left edge cell and then moving to the right until it 
+	// sees a full column with all zeroes
+	public void DetectRight()
+	{
+	  right = topCell.col;
+	  rightCell.Assign(topCell.row, topCell.col, cellreads); // questionable
+	  boolean found = false;
+	  for(int col = leftCell.col+1; col < N; col++)
+      {
+		  found = false;
+	    for(int row = topCell.row; row < N; row++)
+	    {
+	    	cellreads++;
+			  if (blob[row][col] == 1)
+			  {
+				  right = col;
+				  rightCell.Assign(row, col,cellreads);
+				  found = true;
+			     break;
+			  }
+	    }
+	    if (!found) break;
+	  }
+	  rightCell.cellreads = cellreads;
+    }
+	// This function is part of the naive algorithm 
+    // It detects the bottom edge by processing cells row by row , only processing 
+	// columns between the left and right edge cells
+    // It begins from the left edge cell assuming it to  and then moving up until it 
+	// sees a blob cell 
+	public void DetectBottom()
+	{
+	 boolean found = false;
+	  if (leftCell.row > rightCell.row) 
+		  bottom = leftCell.row;
+	  else
+		  bottom = rightCell.row;
+	  
+	  bottomCell.Assign(bottom, rightCell.col, cellreads); // the column is questionable
+	  
+	  for(int row = bottom+1; row <  N; row++)
+      {
+		  found = false;
+	    for(int col = leftCell.col; col <= rightCell.col; col++)
+	    {
+	    	cellreads++;
+			  if (blob[row][col] == 1)
+			  {
+				  bottom = row;
+				  bottomCell.Assign(row, col,cellreads);
+				  found = true;
+			     break;  
+			  }
+	    }
+	    if (!found) break;
+	  }
+	  bottomCell.cellreads = cellreads;
+    }
+	
+}
